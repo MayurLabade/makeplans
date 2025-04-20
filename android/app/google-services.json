@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "650251547522",
+    "project_id": "makeplans-e3635",
+    "storage_bucket": "makeplans-e3635.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:650251547522:android:ece179a89e3a4d6f4b959b",
+        "android_client_info": {
+          "package_name": "com.example.makeplans"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBYg8Q3FWvBTlfrH4FzQ_kHYDspKAiCogw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
