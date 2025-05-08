@@ -21,7 +21,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
     const HomeScreen(),
     const SearchScreen(),
     const TripsScreen(),
-     FavouritesScreen(),
+    FavouritesScreen(),
     const InboxScreen(),
     const SettingsScreen(),
   ];

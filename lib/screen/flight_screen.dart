@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
+import 'package:flutter/services.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 class FlightSearchScreen extends StatefulWidget {
   const FlightSearchScreen({super.key});
@@ -15,6 +16,7 @@ class FlightSearchScreen extends StatefulWidget {
 class _FlightSearchScreenState extends State<FlightSearchScreen> {
   final TextEditingController _sourceController = TextEditingController();
   final TextEditingController _destinationController = TextEditingController();
+  final Razorpay _razorpay = Razorpay();
 
   DateTime selectedDate = DateTime.now();
   int passengers = 1;
@@ -22,6 +24,7 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
   bool isLoading = false;
   String error = '';
   List flights = [];
+  List<Map<String, String>> passengerDetails = [];
 
   final List<String> airports = [
     'Delhi (DEL)',
@@ -36,7 +39,22 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
     'Dubai (DXB)',
   ];
 
-  /// 🔧 Extracts city name from full label like "Delhi (DEL)" → "Delhi"
+  @override
+  void initState() {
+    super.initState();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+  }
+
+  @override
+  void dispose() {
+    _razorpay.clear();
+    _sourceController.dispose();
+    _destinationController.dispose();
+    super.dispose();
+  }
+
   String _getCityName(String input) {
     return input.split(' (').first.trim();
   }
@@ -63,13 +81,11 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
     });
 
     final formattedDate = DateFormat('yyyy-MM-dd').format(selectedDate);
-
-    // ✅ Extract only city names for API
     final sourceCity = _getCityName(source);
     final destinationCity = _getCityName(destination);
 
     final uri = Uri.parse(
-      'https://cb74-2401-4900-1906-8d55-4908-d059-8928-f13c.ngrok-free.app/makeplans-api/api/flights/search_flights.php'
+      'https://c3a0-106-195-9-43.ngrok-free.app/makeplans-api/api/flights/search_flights.php'
           '?source=${Uri.encodeComponent(sourceCity)}'
           '&destination=${Uri.encodeComponent(destinationCity)}'
           '&date=$formattedDate&class=$travelClass&passengers=$passengers',
@@ -109,6 +125,120 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
     }
   }
 
+  void _showPassengerFormAndPay(Map flight) {
+    passengerDetails = List.generate(passengers, (index) => {"name": "", "age": ""});
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Passenger Details"),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: passengers,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          decoration: InputDecoration(
+                            labelText: "Name ${index + 1}",
+                            border: const OutlineInputBorder(),
+                          ),
+                          onChanged: (val) => passengerDetails[index]['name'] = val,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: 70,
+                        child: TextFormField(
+                          decoration: const InputDecoration(
+                            labelText: "Age",
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          onChanged: (val) => passengerDetails[index]['age'] = val,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final isComplete = passengerDetails.every(
+                      (p) => p['name']!.isNotEmpty && p['age']!.isNotEmpty,
+                );
+                if (!isComplete) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Please fill in all passenger details.")),
+                  );
+                  return;
+                }
+                Navigator.pop(context);
+                _startPayment(flight);
+              },
+              child: const Text("Book"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _startPayment(Map flight) {
+    final amount = (int.tryParse(flight['price'].toString()) ?? 0) * 100;
+
+    var options = {
+      'key': 'rzp_test_NvskXaQumLXiXZ',
+      'amount': amount,
+      'name': flight['airline'],
+      'description': 'Flight ${flight['flight_no']} for $passengers passengers',
+      'prefill': {
+        'contact': '9876543210',
+        'email': 'user@example.com',
+      },
+      'external': {
+        'wallets': ['paytm']
+      }
+    };
+
+    try {
+      _razorpay.open(options);
+    } catch (e) {
+      debugPrint('❌ Razorpay open error: $e');
+    }
+  }
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("✅ Payment Successful: ${response.paymentId}")),
+    );
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("❌ Payment Failed: ${response.message}")),
+    );
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("👜 Wallet Selected: ${response.walletName}")),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -123,10 +253,8 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
           children: [
             _buildTypeAheadField('From', _sourceController),
             const SizedBox(height: 12),
-
             _buildTypeAheadField('To', _destinationController),
             const SizedBox(height: 12),
-
             Row(
               children: [
                 const Icon(Icons.calendar_today, color: Colors.grey),
@@ -141,7 +269,6 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
               ],
             ),
             const SizedBox(height: 12),
-
             Row(
               children: [
                 Expanded(
@@ -174,7 +301,6 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
               ],
             ),
             const SizedBox(height: 20),
-
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -187,7 +313,6 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
               ),
             ),
             const SizedBox(height: 20),
-
             if (isLoading)
               const CircularProgressIndicator()
             else if (error.isNotEmpty)
@@ -199,31 +324,34 @@ class _FlightSearchScreenState extends State<FlightSearchScreen> {
                   itemCount: flights.length,
                   itemBuilder: (context, index) {
                     final flight = flights[index];
-                    return Card(
-                      elevation: 3,
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      child: ListTile(
-                        leading: Image.network(
-                          flight['logo'],
-                          height: 40,
-                          width: 40,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.flight),
-                        ),
-                        title: Text('${flight['airline']} (${flight['flight_no']})'),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('${flight['source_code']} → ${flight['destination_code']}'),
-                            Text('${flight['departure'].substring(11, 16)} - ${flight['arrival'].substring(11, 16)} • ${flight['duration']}'),
-                            Text('Class: ${flight['class']} | Pax: ${flight['passengers']}'),
-                          ],
-                        ),
-                        trailing: Text(
-                          '₹${flight['price']}',
-                          style: const TextStyle(
-                            color: Colors.green,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                    return GestureDetector(
+                      onTap: () => _showPassengerFormAndPay(flight),
+                      child: Card(
+                        elevation: 3,
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        child: ListTile(
+                          leading: Image.network(
+                            flight['logo'],
+                            height: 40,
+                            width: 40,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.flight),
+                          ),
+                          title: Text('${flight['airline']} (${flight['flight_no']})'),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('${flight['source_code']} → ${flight['destination_code']}'),
+                              Text('${flight['departure'].substring(11, 16)} - ${flight['arrival'].substring(11, 16)} • ${flight['duration']}'),
+                              Text('Class: ${flight['class']} | Pax: ${flight['passengers']}'),
+                            ],
+                          ),
+                          trailing: Text(
+                            '₹${flight['price']}',
+                            style: const TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
                         ),
                       ),

@@ -30,7 +30,7 @@ class _SearchScreenState extends State<SearchScreen> {
   final Debouncer debouncer = Debouncer(milliseconds: 500);
   final bool _clearedOnce = false;
 
-  final uri = Uri.parse('https://edf9-2401-4900-190c-d45f-10f2-4083-de0b-72e3.ngrok-free.app/makeplans-api/api/hotels/hotels.php');
+  final uri = Uri.parse('https://c3a0-106-195-9-43.ngrok-free.app/makeplans-api/api/hotels/hotels.php');
 
   Future<void> fetchHotels(String query) async {
     try {

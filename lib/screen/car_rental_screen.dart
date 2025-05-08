@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 class CarRentalScreen extends StatefulWidget {
   const CarRentalScreen({super.key});
@@ -15,10 +16,64 @@ class _CarRentalScreenState extends State<CarRentalScreen> {
   String? _errorMessage;
   List<dynamic> _cars = [];
 
+  final Razorpay _razorpay = Razorpay();
+
   @override
   void initState() {
     super.initState();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
     _fetchAvailableCars(""); // Fetch all cars initially (empty location)
+  }
+
+  @override
+  void dispose() {
+    _razorpay.clear();
+    _locationController.dispose();
+    super.dispose();
+  }
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("✅ Payment Successful: ${response.paymentId}")),
+    );
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("❌ Payment Failed: ${response.message}")),
+    );
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("👜 Wallet Selected: ${response.walletName}")),
+    );
+  }
+
+  void _startPayment(Map<String, dynamic> car) {
+    final int amount = (int.tryParse(car['price'].toString()) ?? 0) * 100;
+
+    var options = {
+      'key': 'rzp_test_NvskXaQumLXiXZ',
+      'amount': amount,
+      'name': car["make"] + " " + car["model"],
+      'description': 'Car Rental Booking',
+      'prefill': {
+        'contact': '9876543210',
+        'email': 'user@example.com',
+      },
+      'external': {
+        'wallets': ['paytm']
+      }
+    };
+
+    try {
+      _razorpay.open(options);
+    } catch (e) {
+      debugPrint('❌ Razorpay open error: $e');
+    }
   }
 
   Future<void> _fetchAvailableCars(String location) async {
@@ -31,7 +86,7 @@ class _CarRentalScreenState extends State<CarRentalScreen> {
     try {
       final response = await http.get(
         Uri.parse(
-          "https://cb74-2401-4900-1906-8d55-4908-d059-8928-f13c.ngrok-free.app/makeplans-api/api/cabs/available_rental.php?location=$location",
+          "https://c3a0-106-195-9-43.ngrok-free.app/makeplans-api/api/cabs/available_rental.php?location=$location",
         ),
       );
 
@@ -63,6 +118,10 @@ class _CarRentalScreenState extends State<CarRentalScreen> {
   }
 
   Widget _buildCarCard(Map<String, dynamic> car) {
+    String carName = "${car["make"] ?? ""} ${car["model"] ?? ""}";
+    int? price = car["price"];
+    int? seats = car["seats"];
+
     return Card(
       elevation: 4,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -74,11 +133,12 @@ class _CarRentalScreenState extends State<CarRentalScreen> {
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Image.network(
-                "https://picsum.photos/100/80", // Random image placeholder
+                "https://tse4.mm.bing.net/th?id=OIP.tIsYATaXWHZxYa6QCd3W1AHaDx&pid=Api&P=0&h=180", // Placeholder image
                 width: 100,
                 height: 80,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => const Icon(Icons.directions_car, size: 60),
+                errorBuilder: (context, error, stackTrace) =>
+                const Icon(Icons.directions_car, size: 60),
               ),
             ),
             const SizedBox(width: 12),
@@ -87,19 +147,27 @@ class _CarRentalScreenState extends State<CarRentalScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    car["car_name"] ?? "Car",
+                    carName,
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
-                    "${car["type"]} | Seats: ${car["seats"]}",
+                    "Seats: ${seats ?? '-'}",
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    "₹${car["price_per_day"]}/day",
+                    "₹${price ?? '-'} /day",
                     style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
                     overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: () => _startPayment(car),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                    ),
+                    child: const Text("Book"),
                   ),
                 ],
               ),

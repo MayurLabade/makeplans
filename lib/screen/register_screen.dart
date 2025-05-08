@@ -24,10 +24,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   bool _isLoading = false;
 
-  // ✅ Sync user to your MySQL
   Future<void> _saveFirebaseUser(User user) async {
     try {
-      final uri = Uri.parse('https://cb74-2401-4900-1906-8d55-4908-d059-8928-f13c.ngrok-free.app/makeplans-api/api/auth/save_firebase_user.php');
+      final uri = Uri.parse('https://c3a0-106-195-9-43.ngrok-free.app/makeplans-api/api/auth/save_firebase_user.php');
       final response = await http.post(
         uri,
         headers: {'Content-Type': 'application/json'},
@@ -50,7 +49,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  // 📌 Handle Registration
   Future<void> _register() async {
     if (_formKey.currentState!.validate()) {
       if (_passwordController.text != _confirmPasswordController.text) {
@@ -80,7 +78,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           _passwordController.text,
         );
 
-        // ✅ Get the current user and sync to MySQL
         final user = FirebaseAuth.instance.currentUser;
         if (user != null) {
           await _saveFirebaseUser(user);
@@ -118,6 +115,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  Widget themedInput(InputField child) {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        inputDecorationTheme: const InputDecorationTheme(
+          labelStyle: TextStyle(color: Colors.white),
+          enabledBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.white54),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.white),
+          ),
+          prefixIconColor: Colors.white,
+        ),
+        textTheme: const TextTheme(
+          bodyMedium: TextStyle(color: Colors.white),
+        ),
+      ),
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -133,15 +151,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: ListView(
             children: [
               const SizedBox(height: 20),
-              InputField(
+              themedInput(InputField(
                 controller: _nameController,
                 labelText: 'Name',
                 icon: Icons.person,
                 validator: (value) =>
                 value!.isEmpty ? 'Please enter your name' : null,
-              ),
+              )),
               const SizedBox(height: 16),
-              InputField(
+              themedInput(InputField(
                 controller: _emailController,
                 labelText: 'Email',
                 icon: Icons.email,
@@ -149,9 +167,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 !RegExp(Constants.emailRegex).hasMatch(value!)
                     ? 'Enter a valid email'
                     : null,
-              ),
+              )),
               const SizedBox(height: 16),
-              InputField(
+              themedInput(InputField(
                 controller: _passwordController,
                 labelText: 'Password',
                 icon: Icons.lock,
@@ -160,9 +178,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 value!.length < 6
                     ? 'Password must be at least 6 characters'
                     : null,
-              ),
+              )),
               const SizedBox(height: 16),
-              InputField(
+              themedInput(InputField(
                 controller: _confirmPasswordController,
                 labelText: 'Confirm Password',
                 icon: Icons.lock,
@@ -171,7 +189,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 value != _passwordController.text
                     ? 'Passwords do not match'
                     : null,
-              ),
+              )),
               const SizedBox(height: 24),
               _isLoading
                   ? const Center(child: CircularProgressIndicator())

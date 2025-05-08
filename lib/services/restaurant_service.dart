@@ -2,38 +2,28 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class RestaurantService {
-  final String baseUrl = 'https://cb74-2401-4900-1906-8d55-4908-d059-8928-f13c.ngrok-free.app';
+  final String _baseUrl =
+      'https://c3a0-106-195-9-43.ngrok-free.app/makeplans-api/api/restaurants/list_restaurants.php';
 
   Future<List<dynamic>> fetchRestaurants(String query) async {
-    final Uri uri = Uri.parse('$baseUrl/makeplans-api/api/restaurants/list_restaurants.php');
+    try {
+      final response = await http.get(Uri.parse(_baseUrl));
 
-    final response = await http.get(uri);
+      if (response.statusCode == 200) {
+        final jsonBody = json.decode(response.body);
+        print('🟢 Raw response: $jsonBody');
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-
-      if (data['status'] == true && data['restaurants'] != null) {
-        List<dynamic> restaurants = data['restaurants'];
-
-        // Simple local filtering (you already handle this in screen too)
-        if (query.isNotEmpty) {
-          restaurants = restaurants.where((restaurant) {
-            final name = (restaurant['name'] ?? '').toString().toLowerCase();
-            return name.contains(query.toLowerCase());
-          }).toList();
+        if (jsonBody['status'] == true && jsonBody['data'] is List) {
+          return List<Map<String, dynamic>>.from(jsonBody['data']);
+        } else {
+          throw Exception('API returned no data: ${jsonBody['message']}');
         }
-
-        return restaurants;
       } else {
-        return [];
+        throw Exception('HTTP error: ${response.statusCode}');
       }
-    } else {
-      throw Exception('❌ Failed to fetch restaurants: ${response.body}');
+    } catch (e) {
+      print('❌ fetchRestaurants error: $e');
+      rethrow;
     }
-  }
-
-  // Kept for structure, but not needed with static images from your API
-  Future<String> fetchRestaurantImage(String placeId) async {
-    return 'https://via.placeholder.com/150';
   }
 }

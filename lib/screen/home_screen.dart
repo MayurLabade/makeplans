@@ -23,6 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final PageController _pageController = PageController();
 
   final List<String> bannerImages = [
+    // 🔁 banner images (unchanged)
     'https://plus.unsplash.com/premium_photo-1661963123153-5471a95b7042?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
     'https://images.unsplash.com/photo-1517840901100-8179e982acb7?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
     'https://plus.unsplash.com/premium_photo-1661962992065-ce02d11c1d28?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
@@ -45,7 +46,6 @@ class _HomeScreenState extends State<HomeScreen> {
     'https://images.unsplash.com/photo-1611892440504-42a792e24d32?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
     'https://images.unsplash.com/photo-1728365743796-ee69341a166d?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
   ];
-
 
   final String apiKey = 'fsq3NXT1L7Ug6ius8JP64u5QAfd4BzhiMBPl0bDZ3wW1wKw=';
 
@@ -84,8 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _fetchRecommendedHotels() async {
     const String apiUrl = 'https://api.foursquare.com/v3/places/search';
-    final Uri uri = Uri.parse(
-        '$apiUrl?query=hotels&categories=19014&near=India&limit=20');
+    final Uri uri = Uri.parse('$apiUrl?query=hotels&categories=19014&near=India&limit=20');
 
     try {
       final response = await http.get(
@@ -104,19 +103,14 @@ class _HomeScreenState extends State<HomeScreen> {
           String hotelId = hotel['fsq_id'];
           hotel['image_url'] = await _fetchHotelImage(hotelId);
           hotel['rating'] = (hotel['rating'] ?? 4.0).toString();
-          hotel['price'] = (hotel['price'] != null)
-              ? '\$${hotel['price']}'
-              : 'Price not available';
-          hotel['location'] =
-              hotel['location']?['formatted_address'] ?? 'Unknown Location';
+          hotel['price'] = (hotel['price'] != null) ? '\$${hotel['price']}' : '₹12000';
+          hotel['location'] = hotel['location']?['formatted_address'] ?? 'Unknown Location';
           return hotel;
         }));
 
         setState(() {
           hotels = hotelList;
         });
-      } else {
-        print('❌ Failed to fetch hotels: ${response.body}');
       }
     } catch (e) {
       print('❌ Error fetching hotels: $e');
@@ -124,17 +118,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<String> _fetchHotelImage(String hotelId) async {
-    final Uri uri = Uri.parse(
-        'https://api.foursquare.com/v3/places/$hotelId/photos');
-
+    final Uri uri = Uri.parse('https://api.foursquare.com/v3/places/$hotelId/photos');
     try {
-      final response = await http.get(
-        uri,
-        headers: {
-          'Authorization': apiKey,
-          'Accept': 'application/json',
-        },
-      );
+      final response = await http.get(uri, headers: {
+        'Authorization': apiKey,
+        'Accept': 'application/json',
+      });
 
       if (response.statusCode == 200) {
         List images = json.decode(response.body);
@@ -147,7 +136,6 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       print('❌ Image fetch error: $e');
     }
-
     return 'https://via.placeholder.com/150';
   }
 
@@ -168,12 +156,26 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               _buildAutoSwipingBanner(),
               const SizedBox(height: 12),
-              const Text(
-                "Trending Categories",
-                style: TextStyle(fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white),
+
+              // ✅ Blinking Text Here
+              AnimatedOpacity(
+                opacity: _blink ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 300),
+                child: const Center(
+                  child: Text(
+                    '🔥 Special Offers Just For You!',
+                    style: TextStyle(
+                      color: Colors.amber,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ),
+              const SizedBox(height: 16),
+
+              const Text("Trending Categories",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
               const SizedBox(height: 12),
               GridView(
                 shrinkWrap: true,
@@ -185,19 +187,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   childAspectRatio: 1.2,
                 ),
                 children: [
-                  _buildCategoryCard('Hotels', Icons.hotel),
-                  _buildCategoryCard('Restaurants', Icons.restaurant),
-                  _buildCategoryCard('Car Rental', Icons.directions_car),
-                  _buildCategoryCard('Flights', Icons.flight),
+                  _buildCategoryCard('Hotels'),
+                  _buildCategoryCard('Restaurants'),
+                  _buildCategoryCard('Car Rental'),
+                  _buildCategoryCard('Flights'),
                 ],
               ),
               const SizedBox(height: 16),
-              const Text(
-                "Recommended Hotels",
-                style: TextStyle(fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white),
-              ),
+              const Text("Recommended Hotels",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
               const SizedBox(height: 8),
               ListView.builder(
                 shrinkWrap: true,
@@ -214,9 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => HotelDetailScreen(hotel: hotel),
-                        ),
+                        MaterialPageRoute(builder: (_) => HotelDetailScreen(hotel: hotel)),
                       );
                     },
                     child: Card(
@@ -232,18 +228,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             height: 70,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
-                              return Image.asset(
-                                  'assets/placeholder.png', width: 70,
-                                  height: 70);
+                              return Image.asset('assets/placeholder.png', width: 70, height: 70);
                             },
                           ),
                         ),
-                        title: Text(name, style: const TextStyle(
-                            color: Colors.white)),
-                        subtitle: Text(
-                          '⭐ $rating | $price',
-                          style: const TextStyle(color: Colors.grey),
-                        ),
+                        title: Text(name, style: const TextStyle(color: Colors.white)),
+                        subtitle: Text('⭐ $rating | $price', style: const TextStyle(color: Colors.grey)),
                       ),
                     ),
                   );
@@ -277,8 +267,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   fit: BoxFit.cover,
                   width: double.infinity,
                   errorBuilder: (context, error, stackTrace) {
-                    return Image.asset(
-                        'assets/placeholder_banner.png', fit: BoxFit.cover);
+                    return Image.asset('assets/placeholder_banner.png', fit: BoxFit.cover);
                   },
                 ),
               );
@@ -300,34 +289,26 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCategoryCard(String title, IconData icon) {
+  Widget _buildCategoryCard(String title) {
+    final Map<String, String> categoryImages = {
+      'Hotels': 'https://cdn-icons-png.flaticon.com/128/1475/1475996.png',
+      'Restaurants': 'https://cdn-icons-png.flaticon.com/128/6643/6643359.png',
+      'Car Rental': 'https://cdn-icons-png.flaticon.com/128/9815/9815862.png',
+      'Flights': 'https://cdn-icons-png.flaticon.com/128/744/744502.png',
+    };
+
+    final imageUrl = categoryImages[title] ?? 'https://via.placeholder.com/100';
+
     return GestureDetector(
       onTap: () {
         if (title == 'Hotels') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const SearchScreen()),
-          );
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const SearchScreen()));
         } else if (title == 'Restaurants') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const RestaurantScreen()),
-          );
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const RestaurantScreen()));
         } else if (title == 'Car Rental') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const CarRentalScreen()),
-          );
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const CarRentalScreen()));
         } else if (title == 'Flights') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (
-                context) => const FlightSearchScreen()), // ✅ Make sure this screen exists
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$title selected')),
-          );
+          Navigator.push(context, MaterialPageRoute(builder: (context) => const FlightSearchScreen()));
         }
       },
       child: Card(
@@ -337,7 +318,14 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 36, color: Colors.lightBlue),
+            Image.network(
+              imageUrl,
+              height: 48,
+              width: 48,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) =>
+              const Icon(Icons.image_not_supported, color: Colors.red),
+            ),
             const SizedBox(height: 6),
             Text(
               title,

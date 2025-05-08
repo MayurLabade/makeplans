@@ -1,9 +1,9 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 
 import '../widgets/custom_button.dart';
 import '../widgets/custom_textfield.dart';
@@ -30,7 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
           : "Guest User";
 
       final uri = Uri.parse(
-        'https://cb74-2401-4900-1906-8d55-4908-d059-8928-f13c.ngrok-free.app/makeplans-api/api/auth/save_firebase_user.php',
+        'https://c3a0-106-195-9-43.ngrok-free.app/makeplans-api/api/auth/save_firebase_user.php',
       );
 
       final response = await http.post(
@@ -40,6 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
           "firebase_uid": user.uid,
           "name": name,
           "email": user.email ?? '',
+          "password": _passwordController.text.trim(),
           "profile_picture": user.photoURL ?? ''
         }),
       );
@@ -145,130 +146,130 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _signInWithFacebook() async {
-    try {
-      final LoginResult result = await FacebookAuth.instance.login();
+  void _forgotPassword() async {
+    final email = _emailController.text.trim();
 
-      if (result.status == LoginStatus.success) {
-        final OAuthCredential facebookAuthCredential =
-        FacebookAuthProvider.credential(result.accessToken!.token);
-
-        final userCredential = await FirebaseAuth.instance
-            .signInWithCredential(facebookAuthCredential);
-
-        final user = userCredential.user;
-
-        if (user != null) {
-          print("✅ Facebook login successful: ${user.email}");
-          await _saveFirebaseUser(user);
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const BottomNavBar()),
-          );
-        }
-      } else {
-        print("⚠️ Facebook login cancelled or failed: ${result.status}");
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Facebook login failed")),
-        );
-      }
-    } catch (e) {
-      print("❌ Facebook Sign-In error: $e");
+    if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Facebook login failed: $e")),
+        const SnackBar(content: Text('Please enter your email to reset password')),
+      );
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('✅ Password reset link sent to your email')),
+      );
+    } catch (e) {
+      print("❌ Forgot password error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('❌ Error: ${e.toString()}')),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black87,
-      body: Stack(
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/images/background.png'),
-                fit: BoxFit.cover,
+    return WillPopScope(
+      onWillPop: () async {
+        SystemNavigator.pop(); // ⛔ Closes the app on back button
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black87,
+        body: Stack(
+          children: [
+            Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/images/background.png'),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-          ),
-          SafeArea(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 80),
-                      const Center(
-                        child: Text(
-                          'Make Plans',
-                          style: TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
+            SafeArea(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 80),
+                        const Center(
+                          child: Text(
+                            'Make Plans',
+                            style: TextStyle(
+                              fontSize: 36,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 60),
-                      const Text('Email', style: TextStyle(fontSize: 16)),
-                      CustomTextField(
-                        controller: _emailController,
-                        hintText: 'Enter your email',
-                      ),
-                      const SizedBox(height: 20),
-                      const Text('Password', style: TextStyle(fontSize: 16)),
-                      CustomTextField(
-                        controller: _passwordController,
-                        hintText: 'Enter your password',
-                        isPassword: true,
-                      ),
-                      const SizedBox(height: 30),
-                      CustomButton(
-                        text: 'Login',
-                        onPressed: _login,
-                        isLoading: _isLoading,
-                      ),
-                      const SizedBox(height: 20),
-                      Center(
-                        child: TextButton(
-                          onPressed: () =>
-                              Navigator.pushNamed(context, '/register'),
-                          child: const Text(
-                            'Don\'t have an account? Register Here',
-                            style: TextStyle(color: Colors.blue),
+                        const SizedBox(height: 60),
+                        const Text('Email', style: TextStyle(fontSize: 16, color: Colors.white)),
+                        CustomTextField(
+                          controller: _emailController,
+                          hintText: 'Enter your email',
+                        ),
+                        const SizedBox(height: 20),
+                        const Text('Password', style: TextStyle(fontSize: 16, color: Colors.white)),
+                        CustomTextField(
+                          controller: _passwordController,
+                          hintText: 'Enter your password',
+                          isPassword: true,
+                        ),
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: _forgotPassword,
+                            child: const Text(
+                              'Forgot Password?',
+                              style: TextStyle(color: Colors.lightBlueAccent),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 30),
-                      const Center(
-                        child: Text(
-                          'Or Sign Up Using',
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                        const SizedBox(height: 20),
+                        CustomButton(
+                          text: 'Login',
+                          onPressed: _login,
+                          isLoading: _isLoading,
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _socialButton('assets/images/google.png', 'Google',
-                              _signInWithGoogle),
-                          const SizedBox(width: 16),
-                          _socialButton('assets/images/facebook.png', 'Facebook',
-                              _signInWithFacebook),
-                        ],
-                      ),
-                    ],
+                        const SizedBox(height: 20),
+                        Center(
+                          child: TextButton(
+                            onPressed: () => Navigator.pushNamed(context, '/register'),
+                            child: const Text(
+                              'Don\'t have an account? Register Here',
+                              style: TextStyle(color: Colors.blue),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 30),
+                        const Center(
+                          child: Text(
+                            'Or Sign Up Using',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _socialButton('assets/images/google.png', 'Google', _signInWithGoogle),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
